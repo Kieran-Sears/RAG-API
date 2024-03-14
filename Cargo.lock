@@ -441,16 +441,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "magicoder"
-version = "0.1.0"
-dependencies = [
- "config",
- "llm",
- "rand",
- "serde",
-]
-
-[[package]]
 name = "memchr"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -702,6 +692,16 @@ dependencies = [
  "serde_json",
  "unicode-normalization",
  "unicode-normalization-alignments",
+]
+
+[[package]]
+name = "rustformers"
+version = "0.1.0"
+dependencies = [
+ "config",
+ "llm",
+ "rand",
+ "serde",
 ]
 
 [[package]]

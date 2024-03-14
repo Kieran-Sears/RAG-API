@@ -1,5 +1,5 @@
 [package]
-name = "magicoder"
+name = "rustformers"
 version = "0.1.0"
 edition = "2021"
 
