@@ -13,7 +13,7 @@ FROM debian:buster-slim
 WORKDIR /app
 
 # Copy the compiled binary from the builder stage
-COPY --from=builder /app/target/release/rustfomers /app/rustformers
+COPY --from=builder /app/target/release/rustformers /app/rustformers
 
 # Set the entry point
 CMD ["./rustformers"]
