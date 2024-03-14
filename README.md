@@ -1,0 +1,1 @@
+used in conjunction with [open_llama_3b-f16.bin](https://huggingface.co/rustformers/open-llama-ggml/tree/main) for testing to see if [rustformers](https://github.com/rustformers/llm) works out the box.

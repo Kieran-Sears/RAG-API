@@ -1,9 +1,19 @@
-FROM rust:1.76
+FROM rust:1.76 AS builder
 
-WORKDIR /
+WORKDIR /app
+
 COPY . .
-COPY C:/Users/catri/Kieran/Personal/Projects/Hugging Face Models/Magicoder-S-DS-6.7B-GPTQ/ ./model/
 
-RUN cargo install --path .
+# Compile the Rust code
+RUN cargo build --release
 
-CMD ["/src/main.rs"]
+# Final stage: create a minimal runtime image
+FROM debian:buster-slim
+
+WORKDIR /app
+
+# Copy the compiled binary from the builder stage
+COPY --from=builder /app/target/release/rustfomers /app/rustformers
+
+# Set the entry point
+CMD ["./rustformers"]
