@@ -4,16 +4,14 @@ WORKDIR /app
 
 COPY . .
 
-# Compile the Rust code
 RUN cargo build --release
 
-# Final stage: create a minimal runtime image
-FROM debian:buster-slim
+FROM debian:bookworm
 
 WORKDIR /app
 
-# Copy the compiled binary from the builder stage
-COPY --from=builder /app/target/release/rustformers /app/rustformers
+COPY --from=builder /app/config.json /app/
+COPY --from=builder /app/models/ /app/models/
+COPY --from=builder /app/target/release/rustformers /app/
 
-# Set the entry point
 CMD ["./rustformers"]
