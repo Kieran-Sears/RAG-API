@@ -64,8 +64,8 @@ fn rocket() -> Rocket {
     };
 
     rocket::ignite()
-        .manage(state)
-        .mount("/", routes![health_check, infer])
+    .manage(state)
+    .mount("/", routes![health_check, infer, upload])
 }
 
 #[tokio::main]
