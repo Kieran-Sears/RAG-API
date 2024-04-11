@@ -1,8 +1,29 @@
-version: '3.7'
+version: '3.8'
+
 services:
-  dev:
-    image: "rust:bookworm"
-    volumes:
-      - "./:/rustformers"
+  rustformers:
+    build: .
+    ports:
+      - "8000:8000"
     environment:
-      - USER=kieran
+      ROCKET_ADDRESS: "0.0.0.0"
+    depends_on:
+      - postgres
+      - ollama
+
+  postgres:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydatabase
+
+  ollama:
+    image: ollama:latest
+    ports:
+      - "9000:9000"
+    volumes:
+      - C:/Users/catri/.ollama:/root/.ollama
+
