@@ -18,14 +18,19 @@ jobs:
             5a23fda1-1f10-4ee7-bfc9-b15200eebd70 > DOCKER_USERNAME
             f0c39faf-971c-4cf5-96c8-b15200eee97c > DOCKER_PASSWORD
 
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Debug Messages
+        run: |
+          echo "Docker Username 1 is $DOCKER_USERNAME"
+          echo "Docker Username 2 is ${{ secrets.DOCKER_USERNAME }}"
 
       - name: Docker Hub Login
         uses: docker/login-action@v1
         with:
           username: "$DOCKER_USERNAME"
           password: "$DOCKER_PASSWORD"
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Extract Metadata
         id: meta
