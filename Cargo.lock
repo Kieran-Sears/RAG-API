@@ -1150,6 +1150,7 @@ dependencies = [
  "axum",
  "config",
  "llm",
+ "llm-base",
  "rand",
  "serde",
  "tokio",

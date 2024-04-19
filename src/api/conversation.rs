@@ -1,7 +1,7 @@
 use crate::{AppState, Inference};
 use std::sync::Arc;
 use axum::{
-    extract::Multipart,
+    extract::{Extension, Multipart},
     response::Html
 };
 
@@ -26,7 +26,7 @@ pub async fn upload_form() -> Html<&'static str> {
     )
 }
 
-pub async fn upload(mut multipart: Multipart, state: Arc<AppState>) {
+pub async fn upload_handler(state: Extension<Arc<AppState>>, mut multipart: Multipart) {
     while let Some(field) = multipart.next_field().await.unwrap() {
         let name = field.name().unwrap().to_string();
         let file_name = field.file_name().unwrap().to_string();
@@ -40,6 +40,10 @@ pub async fn upload(mut multipart: Multipart, state: Arc<AppState>) {
 
         let hello_world = String::from("Hello, world!");
         let response = state.infer(hello_world).await;
-        println!("Inference:\n{response}");
+
+        match response {
+            Ok(result) => format!("\n\nInference stats:\n{result}"),
+            Err(err) => format!("\n{err}"),
+        };
     }
 }

@@ -1,6 +1,7 @@
 mod config;
 mod api;
 
+use rand;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use axum::{
@@ -8,12 +9,16 @@ use axum::{
     routing::get,
     Router
 };
+use llm::{
+    Model, 
+    load, 
+    load_progress_callback_stdout, 
+    models::Llama, 
+    InferenceError};
+use llm_base::InferenceStats;
+use api::conversation::{upload_form, upload_handler};
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use llm::{Model, load, load_progress_callback_stdout, models::Llama};
-use api::conversation::{upload_form, upload};
-use rand;
-
 
 #[derive(Clone)]
 struct AppState {
@@ -21,15 +26,15 @@ struct AppState {
 }
 
 pub trait Inference {
-    async fn infer(&self, prompt: String) -> String;
+    fn infer(&self, prompt: String) -> impl std::future::Future<Output = Result<InferenceStats, InferenceError>> + Send;
 }
 
 impl Inference for AppState {
-    async fn infer(&self, prompt: String) -> String {
+    async fn infer(&self, prompt: String) -> Result<InferenceStats, InferenceError> {
         let llama = self.llama.lock().await;
         let llama = llama.as_ref().expect("Model not loaded");
         let mut session = llama.start_session(Default::default());
-        let res = session.infer::<std::convert::Infallible>(
+        session.infer::<std::convert::Infallible>(
             llama,
             &mut rand::thread_rng(),
             &llm::InferenceRequest {
@@ -41,19 +46,13 @@ impl Inference for AppState {
                 print!("{t}");
                 Ok(())
             },
-        );
-    
-        match res {
-            Ok(result) => format!("\n\nInference stats:\n{result}"),
-            Err(err) => format!("\n{err}"),
-        }
+        )
     }
 }
 
-async fn load_model(llama: Arc<Mutex<Option<Llama>>>) {
-    let model_path = "path_to_your_model_folder";
+async fn load_model(llama: Arc<Mutex<Option<Llama>>>, model_path: String) {
     let model = load::<Llama>(
-        std::path::Path::new(model_path),
+        std::path::Path::new(&model_path),
         Default::default(),
         load_progress_callback_stdout,
     )
@@ -65,13 +64,16 @@ async fn load_model(llama: Arc<Mutex<Option<Llama>>>) {
 #[tokio::main]
 async fn main() {
 
+    let settings = config::load_config();
+    let model_path = settings.get_string("model.path").unwrap();
+
     let llama = Arc::new(Mutex::new(None));
 
-    tokio::spawn(load_model(Arc::clone(&llama)));
+    tokio::spawn(load_model(Arc::clone(&llama), model_path));
 
-    let shared_state = AppState {
+    let shared_state = Arc::new(AppState {
         llama: Arc::clone(&llama),
-    };
+    });
 
     tracing_subscriber::registry()
         .with(
@@ -82,13 +84,13 @@ async fn main() {
         .init();
 
     let app = Router::new()
-        .route("/", get(upload_form).post(upload))
+        .route("/", get(upload_form).post(upload_handler))
+        .layer(Extension(shared_state))
         .layer(DefaultBodyLimit::disable())
         .layer(RequestBodyLimitLayer::new(
             250 * 1024 * 1024, /* 250mb */
         ))
-        .layer(tower_http::trace::TraceLayer::new_for_http())
-        .with_state(shared_state);
+        .layer(tower_http::trace::TraceLayer::new_for_http());
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
     .await

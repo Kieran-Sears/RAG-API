@@ -9,6 +9,7 @@ edition = "2021"
 axum = { version = "0.7.5", features = ["multipart"] } 
 config = "0.14.0"
 llm = "0.1.1"
+llm-base = "0.1.1"
 rand = "0.8.5"
 serde = "1.0.198"
 tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread", "full"] }
