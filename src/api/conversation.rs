@@ -1,4 +1,4 @@
-use crate::{AppState, Inference};
+use crate::AppState;
 use std::sync::Arc;
 use axum::{
     extract::{Extension, Multipart},
@@ -39,7 +39,7 @@ pub async fn upload_handler(state: Extension<Arc<AppState>>, mut multipart: Mult
         );
 
         let hello_world = String::from("Hello, world!");
-        let response = state.infer(hello_world).await;
+        let response = state.inference_engine.infer(hello_world).await;
 
         match response {
             Ok(result) => format!("\n\nInference stats:\n{result}"),
