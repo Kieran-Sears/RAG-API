@@ -1,5 +1,8 @@
 {
     "model": {
-        "path": "./models/open_llama_3b-f16.bin"
+        "path": "/home/kieran/Personal/Projects/Hugging Face Models/Open_Llama_3b-f16/open_llama_3b-f16.bin"
+    },
+    "database": {
+        "url": "postgres://myuser:mypassword@localhost/mydatabase"
     }
 }

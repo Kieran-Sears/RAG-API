@@ -1,15 +1,15 @@
 version: '3.8'
 
 services:
-  rustformers:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      ROCKET_ADDRESS: "0.0.0.0"
-    depends_on:
-      - postgres
-      - ollama
+  # rustformers:
+  #   build: .
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     ROCKET_ADDRESS: "0.0.0.0"
+  #   depends_on:
+  #     - postgres
+  #     - ollama
 
   postgres:
     image: postgres:latest
@@ -20,10 +20,10 @@ services:
       POSTGRES_PASSWORD: mypassword
       POSTGRES_DB: mydatabase
 
-  ollama:
-    image: ollama:latest
-    ports:
-      - "9000:9000"
-    volumes:
-      - C:/Users/catri/.ollama:/root/.ollama
+  # ollama:
+  #   image: ollama:latest
+  #   ports:
+  #     - "9000:9000"
+  #   volumes:
+  #     - C:/Users/catri/.ollama:/root/.ollama
 

@@ -1,5 +1,6 @@
 mod config;
 mod api;
+mod db;
 mod inference;
 
 use std::sync::Arc;
@@ -23,6 +24,12 @@ struct AppState {
 async fn main() {
 
     let settings = config::load_config();
+
+    let database_url = settings.get_string("database.url").unwrap();
+    let mut db_connection = db::postgres::establish_connection(&database_url);
+
+    db::postgres::search_item(&mut db_connection);
+
     let model_path = settings.get_string("model.path").unwrap();
 
     let inference_engine = create_inference_engine(model_path, "llm".to_string()).await;

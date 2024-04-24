@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.7.5", features = ["multipart"] } 
 config = "0.14.0"
+diesel = { version = "2.1.6", features = ["postgres"] }
+diesel_migrations = "2.1.0"
 llm = "0.1.1"
 llm-base = "0.1.1"
 rand = "0.8.5"
