@@ -12,13 +12,24 @@ services:
   #     - ollama
 
   postgres:
+    container_name: postgres
+    hostname: postgres # known as `server` when logging into adminer
     image: postgres:latest
+    restart: always
     ports:
       - "5432:5432"
     environment:
       POSTGRES_USER: myuser
       POSTGRES_PASSWORD: mypassword
       POSTGRES_DB: mydatabase
+ 
+  adminer:
+    container_name: adminer
+    hostname: adminer
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
 
   # ollama:
   #   image: ollama:latest
