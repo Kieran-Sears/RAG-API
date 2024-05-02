@@ -1,18 +1,45 @@
 
-use std::{future::Future, pin::Pin, sync::Arc};
-
-use llm::InferenceError; // <- shouldn't be here
-use llm_base::InferenceStats; // <- shouldn't be here
+use std::{future::Future, sync::Arc};
 use crate::inference::llm::LlmInferenceEngine;
 
-pub trait InferenceEngine {
-    // todo: change return type to be more generic and handle conversions within implementation definitions
-    fn infer(&self, prompt: String) ->  Pin<Box<dyn Future<Output = Result<InferenceStats, InferenceError>> + Send + '_>>;
+pub trait FloatVectors {
+    fn precision(&self) -> &'static str;
 }
 
-pub async fn create_inference_engine(model_path: String, framework: String) -> Arc<dyn InferenceEngine + Send + Sync> {
+impl FloatVectors for Vec<f32> {
+    fn precision(&self) -> &'static str {
+        "Single precision (f32)"
+    }
+}
+
+impl FloatVectors for Vec<f64> {
+    fn precision(&self) -> &'static str {
+        "Double precision (f64)"
+    }
+}
+
+
+
+#[derive(Debug, Clone)]
+pub struct InferResp {
+    pub result: String
+}
+
+
+#[derive(Debug, Clone)]
+pub struct InferErr {
+    pub message: String
+}
+
+
+pub trait InferenceEngine: Send + Sync {
+    fn infer(&self, prompt: String) ->  Box<(dyn Future<Output = Result<InferResp, InferErr>> + Send + 'static)>;
+    fn encode(&self, document: String) ->  Box<dyn Future<Output = dyn FloatVectors>>;
+}
+
+pub async fn create_inference_engine(model_path: String, framework: String) -> Arc<dyn InferenceEngine> {
     match framework.as_str() {
-        "llm" => return Arc::new(LlmInferenceEngine::new(model_path)) as Arc<dyn InferenceEngine + Send + Sync>,
+        "llm" => return Arc::new(LlmInferenceEngine::new(model_path)) as Arc<dyn InferenceEngine>,
         _ => panic!("Invalid inference engine specified"),
     }
 }

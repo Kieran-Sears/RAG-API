@@ -1,4 +1,10 @@
-version: '3.8'
+volumes:
+  models:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./models/
+      o: bind
 
 services:
   # rustformers:
@@ -9,7 +15,15 @@ services:
   #     ROCKET_ADDRESS: "0.0.0.0"
   #   depends_on:
   #     - postgres
-  #     - ollama
+
+
+  llm-store:
+    container_name: models
+    hostname: models
+    image: ksears/llm-store:llama-3b-16f
+    volumes:
+      - models:/app/models
+    user: "1000:1000"
 
   postgres:
     container_name: postgres
@@ -30,11 +44,3 @@ services:
     restart: always
     ports:
       - 8080:8080
-
-  # ollama:
-  #   image: ollama:latest
-  #   ports:
-  #     - "9000:9000"
-  #   volumes:
-  #     - C:/Users/catri/.ollama:/root/.ollama
-

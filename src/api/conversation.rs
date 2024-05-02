@@ -1,4 +1,4 @@
-use crate::{db::models::Item, AppState};
+use crate::{db::models::Item, inference::engine::InferenceEngine, AppState};
 use std::sync::Arc;
 use axum::{
     extract::{Extension, Multipart},
@@ -31,7 +31,7 @@ pub async fn upload_form() -> Html<&'static str> {
     )
 }
 
-pub async fn upload_handler(state: Extension<Arc<AppState>>, mut multipart: Multipart) {
+pub async fn upload_handler(state: Extension<Arc<AppState>>, inference_engine: Extension<Arc<dyn InferenceEngine>>, mut multipart: Multipart) {
     while let Some(field) = multipart.next_field().await.unwrap() {
         let name = field.name().unwrap().to_string();
         let file_name = field.file_name().unwrap().to_string();
@@ -45,6 +45,7 @@ pub async fn upload_handler(state: Extension<Arc<AppState>>, mut multipart: Mult
 
         let items: Vec<Item> = from_slice(&data).unwrap();
         let mut conn = state.db_pool.get().expect("Could not pool a db connector");
+
         let (validMessages, invalidMessages) = store_items(items, &mut conn);
 
         let printableInvalidMessages = invalidMessages
@@ -58,6 +59,15 @@ pub async fn upload_handler(state: Extension<Arc<AppState>>, mut multipart: Mult
         let json2 = to_string_pretty(&printableInvalidMessages).unwrap();
         println!("{}", json2);
     }        
+
+    // TODO: use LLM to clean up the questions and answers in the DB and store them in a separate table which will serve Quizes;
+    // fn filterQuestions(items Vec<Item>) {
+    //     for item in items {
+    //       let context = "is this a question or an answer to a question?";
+    //       let prompt =  context + item.mapping.message.content.parts;
+    //       let response = inference_engine.infer(prompt).await;
+    //     }
+    // }
 
     fn store_items(items: Vec<Item>, conn: &mut PooledConnection<ConnectionManager<PgConnection>>) -> (Vec<Item>, Vec<(Item, Error)>) {
         let mut failed_items = Vec::new();
