@@ -1,14 +1,15 @@
-use crate::{db::models::Item, inference::engine::InferenceEngine, AppState};
-use std::sync::Arc;
-use axum::{
-    extract::{Extension, Multipart},
-    response::Html
-};
 extern crate serde_json;
+
+use crate::AppState;
+use crate::db::{postgres::create_item, models::Item};
+
+use std::sync::Arc;
 use serde_json::from_slice;
-use crate::db::postgres::create_item;
 use diesel::{pg::PgConnection, result::Error};
 use diesel::r2d2::{PooledConnection, ConnectionManager};
+use axum::{response::Html, extract::{Extension, Multipart}};
+
+
 
 pub async fn upload_form() -> Html<&'static str> {
     Html(
@@ -31,7 +32,7 @@ pub async fn upload_form() -> Html<&'static str> {
     )
 }
 
-pub async fn upload_handler(state: Extension<Arc<AppState>>, inference_engine: Extension<Arc<dyn InferenceEngine>>, mut multipart: Multipart) {
+pub async fn upload_handler(state: Extension<Arc<AppState>>, mut multipart: Multipart) {
     while let Some(field) = multipart.next_field().await.unwrap() {
         let name = field.name().unwrap().to_string();
         let file_name = field.file_name().unwrap().to_string();
@@ -46,18 +47,18 @@ pub async fn upload_handler(state: Extension<Arc<AppState>>, inference_engine: E
         let items: Vec<Item> = from_slice(&data).unwrap();
         let mut conn = state.db_pool.get().expect("Could not pool a db connector");
 
-        let (validMessages, invalidMessages) = store_items(items, &mut conn);
+        let (valid_messages,invalid_messages) = store_items(items, &mut conn);
 
-        let printableInvalidMessages = invalidMessages
+        let printable_invalid_messages = invalid_messages
         .into_iter()
         .map(|(item, err)| format!("{}: {}", to_string_pretty(&item).unwrap(), err.to_string()))
         .collect::<Vec<_>>();
 
         use serde_json::to_string_pretty;
-        let json1 = to_string_pretty(&validMessages).unwrap();
-        println!("{}", json1);
-        let json2 = to_string_pretty(&printableInvalidMessages).unwrap();
-        println!("{}", json2);
+        let json1 = to_string_pretty(&valid_messages).unwrap();
+        println!("Messages Successfully stored:\n{}", json1);
+        let json2 = to_string_pretty(&printable_invalid_messages).unwrap();
+        println!("Messages which failed validation:\n{}", json2);
     }        
 
     // TODO: use LLM to clean up the questions and answers in the DB and store them in a separate table which will serve Quizes;

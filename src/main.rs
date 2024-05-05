@@ -11,15 +11,16 @@ use axum::{
 };
 use diesel::PgConnection;
 use diesel::r2d2::{ConnectionManager, Pool};
-use inference::engine::{InferenceEngine, create_inference_engine};
-
-use api::conversation::{upload_form, upload_handler};
+use inference::engine::{InferenceEngine, InferenceEngines};
+use inference::llm::LlmInferenceEngine;
+use api::conversation;
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
 struct AppState {
-    db_pool: Pool<ConnectionManager<PgConnection>>
+    db_pool: Pool<ConnectionManager<PgConnection>>,
+    engine: InferenceEngines
 }
 
 #[tokio::main]
@@ -29,9 +30,10 @@ async fn main() {
     let database_url = settings.get_string("database.url").unwrap();
     let db_pool = db::postgres::establish_connection(&database_url);
     let model_path = settings.get_string("model.path").unwrap();
-    let inference_engine = create_inference_engine(model_path, "llm".to_string()).await;
-    let shared_state = Arc::new(AppState {db_pool});
-
+    let engine = LlmInferenceEngine::new(model_path);
+    let shared_state = Arc::new(AppState {db_pool, engine: inference::engine::InferenceEngines::Llm(engine)});
+    
+    
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -41,9 +43,8 @@ async fn main() {
         .init();
 
     let app = Router::new()
-        .route("/", get(upload_form).post(upload_handler))
+        .route("/", get(conversation::upload_form).post(conversation::upload_handler))
         .layer(Extension(shared_state))
-        .layer(Extension(inference_engine))
         .layer(DefaultBodyLimit::disable())
         .layer(RequestBodyLimitLayer::new(
             250 * 1024 * 1024, /* 250mb */

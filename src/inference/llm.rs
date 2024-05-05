@@ -1,17 +1,33 @@
-use crate::inference::engine::{InferResp, InferErr, FloatVectors};
+use crate::inference::engine::{InferErr, InferResp, VectorEncoding};
 use crate::InferenceEngine;
-use llm::{models::Llama, InferenceError, Model};
-use llm_base::InferenceStats;
-use std::future::IntoFuture;
+use llm::{models::Llama, Model};
 use std::{future::Future, sync::Arc};
-use tokio::task::JoinHandle;
 
+impl VectorEncoding for LLMEncoding {}
+
+pub struct LLMEncoding {
+    value: Vec<(Vec<u8>, i32)>,
+}
+
+impl LLMEncoding {
+    pub fn new(v: &Vec<(&[u8], i32)>) -> Self {
+        let value: Vec<(Vec<u8>, i32)> = v.iter().map(|&(bytes, val)| (bytes.to_vec(), val)).collect();
+        LLMEncoding { value }
+    }
+
+    pub fn get(&self) -> Vec<(&[u8], i32)> {
+        self.value.iter().map(|(bytes, val)| (bytes.as_slice(), *val)).collect()
+    }
+}
+
+#[derive(Clone)]
 pub struct LlmInferenceEngine {
     model: Arc<Llama>,
 }
 
-impl LlmInferenceEngine {
-    pub fn new(model_path: String) -> Self {
+impl InferenceEngine<LLMEncoding> for LlmInferenceEngine {
+
+    fn new(model_path: String) -> Self {
         LlmInferenceEngine {
             model: Arc::new(
                 llm::load::<Llama>(
@@ -23,18 +39,16 @@ impl LlmInferenceEngine {
             ),
         }
     }
-}
 
-impl InferenceEngine for LlmInferenceEngine {
     fn infer(
         &self,
         prompt: String,
     ) -> Box<dyn Future<Output = Result<InferResp, InferErr>> + Send> {
-        let llama = &*self.model.clone();
-        let future = {//async move {
+        let llama = self.model.clone();
+        let future = {
             let mut session = llama.start_session(Default::default());
             let res = session.infer::<std::convert::Infallible>(
-                llama,
+                &*llama,
                 &mut rand::thread_rng(),
                 &llm::InferenceRequest {
                     prompt: &prompt,
@@ -44,26 +58,27 @@ impl InferenceEngine for LlmInferenceEngine {
                 |t| {
                     print!("{t}");
                     Ok(())
-                }
+                },
             );
 
-            match res {
-                Ok(inferenceStats) => Ok(InferResp{result: inferenceStats.to_string()}),
-                Err(inferenceError) => Err(InferErr{message: inferenceError.to_string()}) 
-            }
+            let x = match res {
+                Ok(inferenceStats) => Ok(InferResp {
+                    result: inferenceStats.to_string(),
+                }),
+                Err(inferenceError) => Err(InferErr {
+                    message: inferenceError.to_string(),
+                }),
+            };
+            x
         };
-    
-        Box::new(tokio::spawn(future))
+
+        Box::new(async move { future })
     }
 
-    fn encode(&self, document: String) -> Box<dyn Future<Output = dyn FloatVectors>> {
-        let x = &self
-            .model
-            .clone()
-            .vocabulary()
-            .tokenize(document.as_str(), false);
+    fn encode(&self, document: String) -> LLMEncoding {
+        let x = &self.model.vocabulary().tokenize(document.as_str(), false);
         match x {
-            Ok(v) => FloatVectors::new(v),
+            Ok(v) => LLMEncoding::new(&v),
             Err(_) => todo!(),
         }
     }
