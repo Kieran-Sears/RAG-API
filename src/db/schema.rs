@@ -1,6 +1,6 @@
 diesel::table! {
     conversations(id) {
-        id -> Text,
+        id -> Uuid,
         title -> Text,
         create_time -> Double,
         update_time -> Double,

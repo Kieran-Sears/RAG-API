@@ -1,14 +1,14 @@
+use uuid::Uuid;
 use diesel::prelude::*;
-
 use serde::{Deserialize, Serialize};
 
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[derive(Queryable, Selectable, Insertable)]
 #[diesel(table_name = crate::db::schema::conversations)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Item {
-    pub id: String,
+    pub id: Uuid,
     pub title: String,
     pub create_time: f64,
     pub update_time: f64,

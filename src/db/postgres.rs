@@ -22,23 +22,23 @@ pub fn establish_connection(database_url: &str) -> Pool<ConnectionManager<PgConn
     pool
 }
 
-pub fn search_item(connection: &mut PgConnection, key: &String) {
-    use crate::db::schema::conversations::dsl::*;
+// pub fn search_item(connection: &mut PgConnection, key: &String) {
+//     use crate::db::schema::conversations::dsl::*;
 
-    let results = conversations
-        .filter(id.eq(key))
-        .limit(5)
-        .select(Item::as_select())
-        .load(connection)
-        .expect("Error loading posts");
+//     let results = conversations
+//         .filter(id.eq(key))
+//         .limit(5)
+//         .select(Item::as_select())
+//         .load(connection)
+//         .expect("Error loading posts");
 
-    println!("Displaying {} posts", results.len());
-    for item in results {
-        println!("{}", item.id);
-        println!("-----------\n");
-        println!("{}", item.title);
-    }
-}
+//     println!("Displaying {} posts", results.len());
+//     for item in results {
+//         println!("{}", item.id);
+//         println!("-----------\n");
+//         println!("{}", item.title);
+//     }
+// }
 
 pub fn create_item(conn: &mut PgConnection, new_item: &Item) -> Result<Item, Error> {
     use crate::db::schema::conversations;

@@ -1,5 +1,5 @@
 
-use std::future::Future;
+use std::{future::Future, pin::Pin};
 
 use super::{llm::{LLMEncoding, LlmInferenceEngine}, noop::{NoOpEncoding, NoOpInferenceEngine}};
 
@@ -17,7 +17,7 @@ pub struct InferErr {
 
 pub trait InferenceEngine<VectorEncoding>: Send + Sync + Clone + Sized {
     fn new(model_path: String) -> Self where Self: Sized;
-    fn infer(&self, prompt: String) ->  Box<(dyn Future<Output = Result<InferResp, InferErr>> + Send + 'static)>;
+    fn infer(&self, prompt: String) ->  Pin<Box<(dyn Future<Output = Result<InferResp, InferErr>> + Send + 'static)>>;
     fn encode(&self, document: String) -> VectorEncoding;
 }
 
@@ -28,7 +28,7 @@ impl InferenceEngine<VectorEncodings> for InferenceEngines {
         InferenceEngines::NoOp(NoOpInferenceEngine::new(model_path))
     }
 
-    fn infer(&self, prompt: String) -> Box<dyn Future<Output = Result<InferResp, InferErr>> + Send> {
+    fn infer(&self, prompt: String) -> Pin<Box<dyn Future<Output = Result<InferResp, InferErr>> + Send + 'static>> {
         match self {
             InferenceEngines::Llm(engine) => engine.infer(prompt),
             InferenceEngines::NoOp(engine) => engine.infer(prompt),
@@ -49,7 +49,6 @@ pub enum InferenceEngines {
     NoOp(NoOpInferenceEngine),
     // Add more variants for other implementations as needed
 }
-
 
 pub enum VectorEncodings {
     Llm(LLMEncoding),

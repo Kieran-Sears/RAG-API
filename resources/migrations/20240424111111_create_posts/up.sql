@@ -1,5 +1,5 @@
-CREATE TABLE items (
-    id TEXT PRIMARY KEY,
+CREATE TABLE conversations (
+    id UUID PRIMARY KEY NOT NULL,
     title TEXT NOT NULL,
     create_time DOUBLE PRECISION NOT NULL,
     update_time DOUBLE PRECISION NOT NULL,
