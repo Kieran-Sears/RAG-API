@@ -1,17 +1,29 @@
-use diesel::result::Error;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+
 use diesel::r2d2::{ConnectionManager, Pool};
+use diesel::{result::Error as DieselError, RunQueryDsl};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use uuid::Uuid;
 
 use crate::db::models::*;
+use crate::db::schema::*;
+
+use thiserror::Error;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("resources/migrations/");
 
-pub fn establish_connection(database_url: &str) -> Pool<ConnectionManager<PgConnection>> {
+#[derive(Debug, Error)]
+pub enum StorageError {
+    #[error("Diesel error: {0}")]
+    DieselError(#[from] diesel::result::Error),
+}
 
+pub fn establish_connection(database_url: &str) -> Pool<ConnectionManager<PgConnection>> {
     let manager = ConnectionManager::<PgConnection>::new(database_url);
-    let pool = Pool::builder().build(manager).expect("Failed to create pool");
+    let pool = Pool::builder()
+        .build(manager)
+        .expect("Failed to create pool");
     let mut conn = pool.get().expect("Failed to get DB connection from pool");
 
     match conn.run_pending_migrations(MIGRATIONS) {
@@ -22,29 +34,41 @@ pub fn establish_connection(database_url: &str) -> Pool<ConnectionManager<PgConn
     pool
 }
 
-// pub fn search_item(connection: &mut PgConnection, key: &String) {
-//     use crate::db::schema::conversations::dsl::*;
+pub fn insert_conversation(
+    pg_conn: &mut PgConnection,
+    conversation: &Conversation,
+) -> Result<Uuid, StorageError> {
+    pg_conn.transaction(|conn| {
 
-//     let results = conversations
-//         .filter(id.eq(key))
-//         .limit(5)
-//         .select(Item::as_select())
-//         .load(connection)
-//         .expect("Error loading posts");
+        let db_conversation: DbConversation = conversation.clone().into();
+        let conversation_id = diesel::insert_into(conversations::table)
+            .values(&db_conversation)
+            .returning(conversations::id)
+            .get_result::<Uuid>(conn)?;
 
-//     println!("Displaying {} posts", results.len());
-//     for item in results {
-//         println!("{}", item.id);
-//         println!("-----------\n");
-//         println!("{}", item.title);
-//     }
-// }
+        for mapping in conversation.mapping.values() {
+            insert_mapping(conn, mapping)?;
+            if let Some(msg) = &mapping.message {
+                insert_message(conn, msg)?;
+            }
+        }
 
-pub fn create_item(conn: &mut PgConnection, new_item: &Item) -> Result<Item, Error> {
-    use crate::db::schema::conversations;
+        Ok(conversation_id)
+    })
+}
 
-    diesel::insert_into(conversations::table)
-        .values(new_item)
-        .returning(Item::as_returning())
+fn insert_mapping(conn: &mut PgConnection, mapping: &Mapping) -> Result<Uuid, DieselError> {
+    let db_mapping: DbMapping = mapping.clone().into();
+    diesel::insert_into(mappings::table)
+        .values(&db_mapping)
+        .returning(mappings::id)
+        .get_result(conn)
+}
+
+fn insert_message(conn: &mut PgConnection, msg: &Message) -> Result<Uuid, DieselError> {
+    let db_message: DbMessage = msg.clone().into();
+    diesel::insert_into(messages::table)
+        .values(&db_message)
+        .returning(messages::id)
         .get_result(conn)
 }

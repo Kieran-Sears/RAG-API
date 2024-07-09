@@ -1,17 +1,17 @@
-extern crate serde_json;
-
-use crate::db::{models::Item, postgres::create_item};
+use crate::db::models::*;
+use crate::db::postgres::insert_conversation;
 use crate::inference::engine::InferenceEngine;
+use crate::inference::models::*;
 use crate::AppState;
 use axum::{
     extract::{Extension, Multipart},
     response::Html,
 };
-use diesel::pg::PgConnection;
-use diesel::r2d2::{ConnectionManager, PooledConnection};
-use serde_json::{from_slice, Value};
-use std::collections::{HashMap, LinkedList};
+use futures::Future;
+use futures::stream::{self, StreamExt};
+use serde_json::from_slice;
 use std::sync::Arc;
+use uuid::Uuid;
 
 pub async fn upload_form() -> Html<&'static str> {
     Html(
@@ -37,105 +37,61 @@ pub async fn upload_form() -> Html<&'static str> {
 pub async fn upload_handler(state: Extension<Arc<AppState>>, mut multipart: Multipart) {
     while let Some(field) = multipart.next_field().await.unwrap() {
         let data = field.bytes().await.unwrap();
-        let items: Vec<Item> = from_slice(&data).unwrap();
+        let conversation_history: Vec<Conversation> =
+            from_slice(&data).expect("JSON deserialization failed");
         let mut conn = state.db_pool.get().expect("Could not pool a db connector");
-        let messages = store_items(&items, &mut conn);
 
-        for m in messages {
-            let data: HashMap<String, Value> = serde_json::from_value(m.mapping.clone())
-                .expect(&format!("Couldn't get mapping from message item {}", m.id));
-
-            let root_id = data
+        let stored_ids: Vec<Uuid> = conversation_history
             .iter()
-            .find_map(|(id, obj)| {
-                if obj["parent"].is_null() {
-                    Some(id.clone())
-                } else {
-                    None
-                }
+            .flat_map(|conversation| insert_conversation(&mut conn, &conversation))
+            .collect();
+
+        let _conversations: Vec<_> = stream::iter(conversation_history)
+            .filter(|conversation| {
+                let stored_ids = stored_ids.clone();
+                let conversation_id = conversation.id.clone();
+
+                async move { stored_ids.contains(&conversation_id) }
             })
-            .expect("No root object found with parent = null");
-
-            let mut linked_list: LinkedList<String> = LinkedList::new();
-            let mut current_id = root_id.clone();
-
-            loop {
-                linked_list.push_back(current_id.clone());
-                let children = &data[&current_id]["children"];
-                if children.is_array() && !children.as_array().unwrap().is_empty() {
-                    current_id = children[0].as_str().unwrap().to_string();
-                } else {
-                    break;
-                }
-            }
-
-            for id in linked_list {
-                println!("Linked List ID: {}", id);
-            }
-        }
+            .then(|conversation| {
+                let inference_engine = state.engine.clone();
+                let conversation = conversation.clone();
+                async move { is_question_or_answer(inference_engine, conversation) }
+            })
+            .collect()
+            .await;
     }
 }
-// for item in messages {
-//     let context = "is this a question or an answer to a question? Answer with nothing other than `Yes` or `No`.";
-//     println!("{}", item.mapping);
-//     let prompt = format!("{} {}", context, item.mapping.as_str().unwrap());
-//     let response = state.engine.infer(prompt);
 
-//     match response.await {
-//         Ok(infer_resp) => {
-//             // Handle the response
-//             println!("Inference response: {:?}", infer_resp);
-//         },
-//         Err(infer_err) => {
-//             // Handle the error
-//             eprintln!("Inference error: {:?}", infer_err);
-//         },
-//     }
-// }
+async fn is_question_or_answer(
+    state: InferenceEngines,
+    conversation: Conversation,
+) -> Result<Vec<(Uuid, bool)>, EngineError> {
+    let context = "is this a question or an answer to a question? Answer with nothing other than `Yes` or `No`.";
 
-fn store_items<'a>(
-    items: &'a Vec<Item>,
-    conn: &mut PooledConnection<ConnectionManager<PgConnection>>,
-) -> &'a Vec<Item> {
-    // use serde_json::to_string_pretty;
-    let mut _failed_items = Vec::new();
-    let mut successful_items = Vec::new();
-
-    for item in items {
-        match create_item(conn, &item) {
-            Ok(_) => {
-                successful_items.push(item);
-            }
-            Err(err) => {
-                // println!("{}", format!("Could not store item:\n{}\n\nError:\n{}", to_string_pretty(&item.id).unwrap(), err.to_string()));
-                _failed_items.push((item, err));
-            }
+    let futures: Vec<_> = conversation.mapping.iter().map(|(id, mapping)| {
+        let m = mapping.clone();
+        let message = m.message
+        .expect(format!("Error: mapping {} does not have a message", mapping.id.to_string()).as_str()).content.parts.join("");
+        let prompt = format!("{} {}", context, message);
+        let s = state.clone();
+        async move {
+            let inference = s.infer(prompt).await?;
+            let is_q_or_a: bool = match inference.result.as_str() {
+                "yes" => Ok(true),
+                "no" => Ok(false),
+                _ => Err(EngineError::new(format!("Couldn't complete inference for {}", id).to_string()))
+            }?;
+            Ok::<(Uuid, bool), EngineError>((mapping.id, is_q_or_a))
         }
-    }
-    items
-}
+    }).collect();
 
-use serde::{Deserialize, Serialize};
+    let results: Result<Vec<(Uuid, bool)>, EngineError> = stream::iter(futures)
+    .then(|fut| fut)
+    .collect::<Vec<_>>()
+    .await
+    .into_iter()
+    .collect();
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-struct MessageContent {
-    content_type: String,
-    parts: Vec<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct MessageNode {
-    id: String,
-    message: MessageContent,
-    children: Option<Box<MessageNode>>,
-}
-
-impl Clone for MessageNode {
-    fn clone(&self) -> Self {
-        MessageNode {
-            id: self.id.clone(),
-            message: self.message.clone(),
-            children: self.children.clone(),
-        }
-    }
+    results
 }

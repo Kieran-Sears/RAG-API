@@ -1,4 +1,4 @@
-use crate::inference::engine::{InferErr, InferResp, VectorEncoding};
+use crate::inference::models::*;
 use crate::InferenceEngine;
 use llm::{models::Llama, Model};
 use std::{future::Future, sync::Arc, pin::Pin};
@@ -43,7 +43,7 @@ impl InferenceEngine<LLMEncoding> for LlmInferenceEngine {
     fn infer(
         &self,
         prompt: String,
-    ) -> Pin<Box<dyn Future<Output = Result<InferResp, InferErr>> + Send>> {
+    ) -> Pin<Box<dyn Future<Output = Result<InferResp, EngineError>> + Send>> {
         let llama = self.model.clone();
         let future = {
             let mut session = llama.start_session(Default::default());
@@ -65,7 +65,7 @@ impl InferenceEngine<LLMEncoding> for LlmInferenceEngine {
                 Ok(inference_stats) => Ok(InferResp {
                     result: inference_stats.to_string(),
                 }),
-                Err(inference_error) => Err(InferErr {
+                Err(inference_error) => Err(EngineError::InferenceError {
                     message: inference_error.to_string(),
                 }),
             };

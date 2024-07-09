@@ -11,7 +11,8 @@ use axum::{
 };
 use diesel::PgConnection;
 use diesel::r2d2::{ConnectionManager, Pool};
-use inference::engine::{InferenceEngine, InferenceEngines};
+use inference::engine::InferenceEngine;
+use inference::models::InferenceEngines;
 use inference::llm::LlmInferenceEngine;
 use api::conversation;
 use tower_http::limit::RequestBodyLimitLayer;
@@ -31,7 +32,7 @@ async fn main() {
     let db_pool = db::postgres::establish_connection(&database_url);
     let model_path = settings.get_string("model.path").unwrap();
     let engine = LlmInferenceEngine::new(model_path);
-    let shared_state = Arc::new(AppState {db_pool, engine: inference::engine::InferenceEngines::Llm(engine)});
+    let shared_state = Arc::new(AppState {db_pool, engine: InferenceEngines::Llm(engine)});
     
     
     tracing_subscriber::registry()

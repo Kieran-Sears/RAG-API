@@ -1,4 +1,4 @@
-use crate::inference::engine::{InferErr, InferResp, VectorEncoding};
+use crate::inference::models::{EngineError, InferResp, VectorEncoding};
 use crate::InferenceEngine;
 use std::{pin::Pin, future::Future};
 
@@ -15,7 +15,7 @@ impl InferenceEngine<NoOpEncoding> for NoOpInferenceEngine {
         NoOpInferenceEngine
     }
 
-    fn infer(&self, _prompt: String) -> Pin<Box<dyn Future<Output = Result<InferResp, InferErr>> + Send>> {
+    fn infer(&self, _prompt: String) -> Pin<Box<dyn Future<Output = Result<InferResp, EngineError>> + Send>> {
         Box::pin(async move { Ok(InferResp { result: "NoOp inference".to_string() }) })
     }
 
