@@ -1,65 +1,6 @@
 use diesel::{joinable, table};
 use diesel::allow_tables_to_appear_in_same_query;
 
-// table! {
-//     conversation(id) {
-//         id -> Uuid,
-//         title -> Text,
-//         create_time -> Double,
-//         update_time -> Double,
-//         mapping_id -> Array<Uuid>,
-//         current_node -> Text,
-//     }
-// }
-
-// table! {
-//     mapping {
-//         id -> Uuid,
-//         message_ids -> Nullable<Array<Uuid>>,
-//         parent -> Nullable<Uuid>,
-//         children -> Array<Uuid>,
-//     }
-// }
-
-// table! {
-//     message {
-//         id -> Uuid,
-//         author_id -> Uuid,
-//         create_time -> Nullable<Double>,
-//         update_time -> Nullable<Double>,
-//         content_id -> Uuid,
-//         status -> Text,
-//         end_turn -> Nullable<Bool>,
-//         weight -> Double,
-//         metadata -> Jsonb,
-//         recipient -> Text,
-//     }
-// }
-
-// table! {
-//     author {
-//         id -> Uuid,
-//         role -> Text,
-//         name -> Nullable<Text>,
-//         metadata -> Jsonb,
-//     }
-// }
-
-// table! {
-//     content {
-//         id -> Uuid,
-//         content_type -> Text,
-//         parts -> Nullable<Array<Text>>,
-//     }
-// }
-
-// joinable!(conversation -> mapping (mapping_id));
-// joinable!(mapping -> message (message_ids));
-// joinable!(message -> author (author_id));
-// joinable!(message -> content (content_id));
-// allow_tables_to_appear_in_same_query!(conversation, mapping, message, author);
-
-
 table! {
     conversations (id) {
         id -> Uuid,
@@ -74,7 +15,7 @@ table! {
         gizmo_id -> Nullable<Uuid>,
         is_archived -> Bool,
         safe_urls -> Nullable<Array<Text>>,
-        default_model_slug -> Text,
+        default_model_slug -> Nullable<Text>,
     }
 }
 
@@ -87,7 +28,7 @@ table! {
         create_time -> Nullable<Double>,
         update_time -> Nullable<Double>,
         content_type -> Text,
-        content_parts -> Nullable<Array<Text>>,
+        content_parts -> Nullable<Array<Jsonb>>,
         status -> Text,
         end_turn -> Nullable<Bool>,
         weight -> Double,

@@ -9,6 +9,8 @@ use uuid::Uuid;
 use crate::db::models::*;
 use crate::db::schema::*;
 
+use tracing::{debug, info, error};
+
 use thiserror::Error;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("resources/migrations/");
@@ -27,8 +29,8 @@ pub fn establish_connection(database_url: &str) -> Pool<ConnectionManager<PgConn
     let mut conn = pool.get().expect("Failed to get DB connection from pool");
 
     match conn.run_pending_migrations(MIGRATIONS) {
-        Ok(_) => println!("Migrations successfully completed."),
-        Err(err) => eprintln!("Error running migrations: {:?}", err),
+        Ok(_) => info!("Migrations successfully completed."),
+        Err(err) => error!("Error running migrations: {:?}", err),
     };
 
     pool
@@ -38,23 +40,46 @@ pub fn insert_conversation(
     pg_conn: &mut PgConnection,
     conversation: &Conversation,
 ) -> Result<Uuid, StorageError> {
-    pg_conn.transaction(|conn| {
-
+    debug!("Inserting conversation: {:?}", conversation.id);
+    
+    let result = pg_conn.transaction(|conn| {
         let db_conversation: DbConversation = conversation.clone().into();
+        debug!("DB conversation: {:?}", db_conversation);
+
         let conversation_id = diesel::insert_into(conversations::table)
             .values(&db_conversation)
             .returning(conversations::id)
             .get_result::<Uuid>(conn)?;
 
+        debug!("Inserted conversation: {:?}", conversation_id);
+
         for mapping in conversation.mapping.values() {
-            insert_mapping(conn, mapping)?;
+            match insert_mapping(conn, mapping) {
+                Ok(mapping_id) => debug!("Inserted mapping ID: {:?}", mapping_id),
+                Err(e) => error!("Failed to insert mapping: {:?}", e),
+            }
+
             if let Some(msg) = &mapping.message {
-                insert_message(conn, msg)?;
+                match insert_message(conn, msg) {
+                    Ok(message_id) => debug!("Inserted message ID: {:?}", message_id),
+                    Err(e) => error!("Failed to insert message: {:?}", e),
+                }
             }
         }
 
         Ok(conversation_id)
-    })
+    });
+
+    match result {
+        Ok(conversation_id) => {
+            info!("Transaction succeeded with conversation ID: {:?}", conversation_id);
+            Ok(conversation_id)
+        }
+        Err(e) => {
+            error!("Transaction failed: {:?}", e);
+            Err(e)
+        }
+    }
 }
 
 fn insert_mapping(conn: &mut PgConnection, mapping: &Mapping) -> Result<Uuid, DieselError> {

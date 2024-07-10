@@ -20,10 +20,10 @@ pub struct DbConversation {
     gizmo_id: Option<Uuid>,
     is_archived: bool,
     safe_urls: Option<Vec<String>>,
-    default_model_slug: String,
+    default_model_slug: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Conversation {
     pub id: Uuid,
     pub title: String,
@@ -37,7 +37,7 @@ pub struct Conversation {
     pub gizmo_id: Option<Uuid>,
     pub is_archived: bool,
     pub safe_urls: Option<Vec<String>>,
-    pub default_model_slug: String,
+    pub default_model_slug: Option<String>,
     pub mapping: std::collections::HashMap<Uuid, Mapping>,
 }
 
@@ -61,7 +61,7 @@ impl From<Conversation> for DbConversation {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Mapping {
     pub id: Uuid,
     pub message: Option<Message>,
@@ -90,7 +90,7 @@ impl From<Mapping> for DbMapping {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Message {
     pub id: Uuid,
     pub author: Author,
@@ -104,7 +104,7 @@ pub struct Message {
     pub recipient: String,
 }
 
-#[derive(Insertable, Queryable, Debug, Identifiable)]
+#[derive(Insertable, Queryable, Identifiable)]
 #[diesel(table_name = messages)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct DbMessage {
@@ -115,7 +115,7 @@ pub struct DbMessage {
     pub create_time: Option<f64>,
     pub update_time: Option<f64>,
     pub content_type: String,
-    pub content_parts: Vec<String>,
+    pub content_parts: Option<Vec<Value>>,
     pub status: String,
     pub end_turn: Option<bool>,
     pub weight: f64,
@@ -143,15 +143,35 @@ impl From<Message> for DbMessage {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Author {
     pub role: String,
     pub name: Option<String>,
     pub metadata: serde_json::Value,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Content {
     pub content_type: String,
-    pub parts: Vec<String>,
+    pub parts: Option<Vec<Value>>,
+}
+
+
+
+#[derive(Deserialize, Serialize, Clone)]
+#[serde(untagged)]
+pub enum ContentPart {
+    Text(String),
+    Object(ContentPartObject),
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct ContentPartObject {
+    content_type: String,
+    asset_pointer: String,
+    size_bytes: u64,
+    width: u32,
+    height: u32,
+    fovea: Option<Value>,
+    metadata: Option<Value>,
 }

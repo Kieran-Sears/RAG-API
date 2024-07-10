@@ -2,6 +2,7 @@ use crate::inference::models::*;
 use crate::InferenceEngine;
 use llm::{models::Llama, Model};
 use std::{future::Future, sync::Arc, pin::Pin};
+use tracing::{debug, error};
 
 impl VectorEncoding for LLMEncoding {}
 
@@ -45,7 +46,7 @@ impl InferenceEngine<LLMEncoding> for LlmInferenceEngine {
         prompt: String,
     ) -> Pin<Box<dyn Future<Output = Result<InferResp, EngineError>> + Send>> {
         let llama = self.model.clone();
-        let future = {
+        Box::pin(async move {
             let mut session = llama.start_session(Default::default());
             let res = session.infer::<std::convert::Infallible>(
                 &*llama,
@@ -60,19 +61,17 @@ impl InferenceEngine<LLMEncoding> for LlmInferenceEngine {
                     Ok(())
                 },
             );
-
-            let x = match res {
-                Ok(inference_stats) => Ok(InferResp {
-                    result: inference_stats.to_string(),
-                }),
-                Err(inference_error) => Err(EngineError::InferenceError {
-                    message: inference_error.to_string(),
-                }),
-            };
-            x
-        };
-
-        Box::pin(async move { future })
+            match res {
+                Ok(inference_stats) => {
+                    // debug!("inference_stats: {}", inference_stats);
+                    Ok(InferResp { result: inference_stats.to_string() })
+                },
+                Err(inference_error) => {
+                    // error!("Inference Error: {}", inference_error);
+                    Err(EngineError::InferenceError { message: inference_error.to_string() })
+                }
+            }
+        })
     }
 
     fn encode(&self, document: String) -> LLMEncoding {
