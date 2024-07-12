@@ -11,7 +11,7 @@ CREATE TABLE conversations (
     gizmo_id UUID,
     is_archived BOOLEAN NOT NULL,
     safe_urls TEXT[],
-    default_model_slug TEXT NOT NULL
+    default_model_slug TEXT
 );
 
 CREATE TABLE messages (
@@ -32,7 +32,7 @@ CREATE TABLE messages (
 
 CREATE TABLE mappings (
     id UUID PRIMARY KEY,
-    message_id UUID REFERENCES messages(id),
+    message UUID REFERENCES messages(id),
     parent UUID,
     children UUID[]
 );

@@ -1,8 +1,8 @@
 use crate::inference::models::*;
 use crate::InferenceEngine;
 use llm::{models::Llama, Model};
-use std::{future::Future, sync::Arc, pin::Pin};
-use tracing::{debug, error};
+use std::{any::Any, future::Future, pin::Pin, sync::Arc};
+// use tracing::{debug, error};
 
 impl VectorEncoding for LLMEncoding {}
 
@@ -24,6 +24,13 @@ impl LLMEncoding {
 #[derive(Clone)]
 pub struct LlmInferenceEngine {
     model: Arc<Llama>,
+}
+
+impl std::fmt::Debug for LlmInferenceEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Implement how you want ExternalLibraryStruct to be formatted
+        write!(f, "ExternalLibraryStruct {{ id: {} }}", "someId")
+    }
 }
 
 impl InferenceEngine<LLMEncoding> for LlmInferenceEngine {

@@ -53,17 +53,17 @@ pub fn insert_conversation(
 
         debug!("Inserted conversation: {:?}", conversation_id);
 
-        for mapping in conversation.mapping.values() {
-            match insert_mapping(conn, mapping) {
-                Ok(mapping_id) => debug!("Inserted mapping ID: {:?}", mapping_id),
-                Err(e) => error!("Failed to insert mapping: {:?}", e),
-            }
-
+        for mapping in conversation.mapping.values() {            
             if let Some(msg) = &mapping.message {
                 match insert_message(conn, msg) {
                     Ok(message_id) => debug!("Inserted message ID: {:?}", message_id),
-                    Err(e) => error!("Failed to insert message: {:?}", e),
+                    Err(e) => error!("Failed to insert message {:?} into conversation {:?}:\n{:?}", msg.id, conversation_id, e),
                 }
+            }
+
+            match insert_mapping(conn, mapping) {
+                Ok(mapping_id) => debug!("Inserted mapping ID: {:?}", mapping_id),
+                Err(e) => error!("Failed to insert mapping {:?} into conversation {:?}:\n{:?}", mapping.id, conversation_id, e),
             }
         }
 
@@ -82,18 +82,26 @@ pub fn insert_conversation(
     }
 }
 
-fn insert_mapping(conn: &mut PgConnection, mapping: &Mapping) -> Result<Uuid, DieselError> {
+fn insert_mapping(conn: &mut PgConnection, mapping: &Mapping) -> Result<Uuid, StorageError> {
     let db_mapping: DbMapping = mapping.clone().into();
-    diesel::insert_into(mappings::table)
+    match diesel::insert_into(mappings::table)
         .values(&db_mapping)
         .returning(mappings::id)
         .get_result(conn)
+    {
+        Ok(mapping_id) => Ok(mapping_id),
+        Err(e) => Err(StorageError::DieselError(e)),
+    }
 }
 
-fn insert_message(conn: &mut PgConnection, msg: &Message) -> Result<Uuid, DieselError> {
+fn insert_message(conn: &mut PgConnection, msg: &Message) -> Result<Uuid, StorageError> {
     let db_message: DbMessage = msg.clone().into();
-    diesel::insert_into(messages::table)
+    match diesel::insert_into(messages::table)
         .values(&db_message)
         .returning(messages::id)
         .get_result(conn)
+    {
+        Ok(message_id) => Ok(message_id),
+        Err(e) => Err(StorageError::DieselError(e)),
+    }
 }

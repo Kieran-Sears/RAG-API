@@ -6,7 +6,7 @@ use thiserror::Error;
 
 pub trait VectorEncoding: Sized {}
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum InferenceEngines {
     Llm(LlmInferenceEngine),
     NoOp(NoOpInferenceEngine),

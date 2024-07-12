@@ -10,7 +10,7 @@ use axum::{
 use futures::stream::{self, StreamExt};
 use serde_json::{from_slice, from_value, Value};
 use std::sync::Arc;
-use tracing::{debug, error, info};
+use tracing::{instrument, trace, debug, error, info};
 use uuid::Uuid;
 
 pub async fn upload_form() -> Html<&'static str> {
@@ -36,13 +36,13 @@ pub async fn upload_form() -> Html<&'static str> {
 
 pub async fn upload_handler(state: Extension<Arc<AppState>>, mut multipart: Multipart) {
     while let Some(field) = multipart.next_field().await.unwrap() {
-        debug!("Hit the upload_handler api!");
+        debug!(target: "api::conversation", "Entered upload_handler");
         let data = field.bytes().await.unwrap();
         let conversation_history: Vec<Conversation> =
             from_slice(&data).expect("JSON deserialization failed");
         let mut conn = state.db_pool.get().expect("Could not pool a db connector");
 
-        debug!("conversation_history {:?}", conversation_history);
+        trace!("conversation_history {:?}", conversation_history);
 
         let stored_ids: Vec<Uuid> = conversation_history
             .iter()
