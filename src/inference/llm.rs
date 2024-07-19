@@ -1,8 +1,8 @@
 use crate::inference::models::*;
 use crate::InferenceEngine;
 use llm::{models::Llama, Model};
-use std::{any::Any, future::Future, pin::Pin, sync::Arc};
-// use tracing::{debug, error};
+use std::{future::Future, pin::Pin, sync::Arc};
+use tracing::{trace, error};
 
 impl VectorEncoding for LLMEncoding {}
 
@@ -28,7 +28,7 @@ pub struct LlmInferenceEngine {
 
 impl std::fmt::Debug for LlmInferenceEngine {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Implement how you want ExternalLibraryStruct to be formatted
+        // todo: Implement how ExternalLibraryStruct should be formatted
         write!(f, "ExternalLibraryStruct {{ id: {} }}", "someId")
     }
 }
@@ -64,17 +64,17 @@ impl InferenceEngine<LLMEncoding> for LlmInferenceEngine {
                 },
                 &mut Default::default(),
                 |t| {
-                    print!("{t}");
+                    trace!("{t}");
                     Ok(())
                 },
             );
             match res {
                 Ok(inference_stats) => {
-                    // debug!("inference_stats: {}", inference_stats);
+                    trace!("inference_stats: {}", inference_stats);
                     Ok(InferResp { result: inference_stats.to_string() })
                 },
                 Err(inference_error) => {
-                    // error!("Inference Error: {}", inference_error);
+                    error!("Inference Error: {}", inference_error);
                     Err(EngineError::InferenceError { message: inference_error.to_string() })
                 }
             }

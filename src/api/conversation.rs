@@ -10,7 +10,7 @@ use axum::{
 use futures::stream::{self, StreamExt};
 use serde_json::{from_slice, from_value, Value};
 use std::sync::Arc;
-use tracing::{instrument, trace, debug, error, info};
+use tracing::{trace, debug, error, info};
 use uuid::Uuid;
 
 pub async fn upload_form() -> Html<&'static str> {

@@ -1,4 +1,4 @@
-FROM rust:1.76 AS builder
+FROM rust:1.78 AS builder
 
 WORKDIR /app
 
@@ -11,6 +11,6 @@ FROM debian:bookworm
 WORKDIR /app
 
 COPY --from=builder /app/config.json /app/
-COPY --from=builder /app/target/release/rustformers /app/
+COPY --from=builder /app/target/release/rag-api /app/
 
-CMD ["./rustformers"]
+CMD ["./rag-api"]

@@ -2,7 +2,6 @@ use diesel::pg::PgConnection;
 use diesel::prelude::*;
 
 use diesel::r2d2::{ConnectionManager, Pool};
-use diesel::{result::Error as DieselError, RunQueryDsl};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use uuid::Uuid;
 

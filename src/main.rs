@@ -35,6 +35,7 @@ async fn main() {
     let engine = LlmInferenceEngine::new(model_path);
     let shared_state = Arc::new(AppState {db_pool, engine: InferenceEngines::Llm(engine)});
 
+    // todo replace with value from config
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         let default = &format!("{}=INFO", env!("CARGO_PKG_NAME").replace("-", "_"));
         let default_filter = &format!("{},db=ERROR,api::upload_handler=INFO,tower_http=INFO", default).to_string();
@@ -51,12 +52,10 @@ async fn main() {
         .route("/", get(conversation::upload_form).post(conversation::upload_handler))
         .layer(Extension(shared_state))
         .layer(DefaultBodyLimit::disable())
-        .layer(RequestBodyLimitLayer::new(
-            250 * 1024 * 1024, /* 250mb */
-        ))
+        .layer(RequestBodyLimitLayer::new(250 * 1024 * 1024))// todo replace with value from config
         .layer(tower_http::trace::TraceLayer::new_for_http());
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000") // todo replace with value from config
     .await
     .unwrap();
 

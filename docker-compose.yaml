@@ -7,14 +7,19 @@ volumes:
       o: bind
 
 services:
-  # rustformers:
-  #   build: .
-  #   ports:
-  #     - "8000:8000"
-  #   environment:
-  #     ROCKET_ADDRESS: "0.0.0.0"
-  #   depends_on:
-  #     - postgres
+  rag-api:
+    container_name: rag-api
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - llm-store
+    volumes:
+      - models:/app/models
+    environment:
+      - APP_DATABASE_URL="postgres://myuser:mypassword@postgres/mydatabase"
+      - APP_MODEL_PATH=/app/models/open_llama_3b-f16.bin
 
 
   llm-store:
@@ -27,7 +32,7 @@ services:
 
   postgres:
     container_name: postgres
-    hostname: postgres # known as `server` when logging into adminer
+    hostname: postgres # `server` in adminer
     image: postgres:latest
     restart: always
     ports:
