@@ -9,7 +9,9 @@ volumes:
 services:
   rag-api:
     container_name: rag-api
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     depends_on:
@@ -18,17 +20,11 @@ services:
     volumes:
       - models:/app/models
     environment:
-      - APP_DATABASE_URL="postgres://myuser:mypassword@postgres/mydatabase"
-      - APP_MODEL_PATH=/app/models/open_llama_3b-f16.bin
-
-
-  llm-store:
-    container_name: models
-    hostname: models
-    image: ksears/llm-store:llama-3b-16f
-    volumes:
-      - models:/app/models
-    user: "1000:1000"
+      RagApi_Database__Url: "postgres://myuser:mypassword@postgres:5432/mydatabase"
+      RagApi_Model__Path: /app/models/open_llama_3b-f16.bin
+      RagApi_Api__Address: "0.0.0.0"
+      RagApi_Api__Port: "3000"
+      RagApi_API__Request_Body_Limit: 1288490188
 
   postgres:
     container_name: postgres
@@ -41,7 +37,15 @@ services:
       POSTGRES_USER: myuser
       POSTGRES_PASSWORD: mypassword
       POSTGRES_DB: mydatabase
- 
+
+  llm-store:
+    container_name: models
+    hostname: models
+    image: ksears/llm-store:llama-3b-16f
+    volumes:
+      - models:/app/models
+    user: "1000:1000"
+
   adminer:
     container_name: adminer
     hostname: adminer

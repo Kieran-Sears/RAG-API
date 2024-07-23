@@ -9,6 +9,7 @@ use axum::{
     routing::get,
     Router
 };
+use ::config::ext::ConfigurationBinder;
 use diesel::PgConnection;
 use diesel::r2d2::{ConnectionManager, Pool};
 use inference::engine::InferenceEngine;
@@ -18,6 +19,7 @@ use db::postgres;
 use api::conversation;
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing_subscriber::{ EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
+
 
 #[derive(Clone, Debug)]
 struct AppState {
@@ -29,11 +31,14 @@ struct AppState {
 async fn main() {
 
     let settings = config::load_config();
-    let database_url = settings.get_string("database.url").unwrap();
-    let db_pool = postgres::establish_connection(&database_url);
-    let model_path = settings.get_string("model.path").unwrap();
-    let engine = LlmInferenceEngine::new(model_path);
+    let database_url = settings.get("Database:Url").unwrap();
+    let db_pool = postgres::establish_connection(database_url.to_string());
+    let model_path = settings.get("model:path").unwrap();
+    let engine = LlmInferenceEngine::new(model_path.to_string());
     let shared_state = Arc::new(AppState {db_pool, engine: InferenceEngines::Llm(engine)});
+    let address = settings.get("Api:Address").unwrap();
+    let port = settings.get("Api:Port").unwrap();
+    let request_body_limit = settings.get_value::<usize>("Api:Request_Body_Limit").unwrap().unwrap();
 
     // todo replace with value from config
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -52,10 +57,10 @@ async fn main() {
         .route("/", get(conversation::upload_form).post(conversation::upload_handler))
         .layer(Extension(shared_state))
         .layer(DefaultBodyLimit::disable())
-        .layer(RequestBodyLimitLayer::new(250 * 1024 * 1024))// todo replace with value from config
+        .layer(RequestBodyLimitLayer::new(request_body_limit))
         .layer(tower_http::trace::TraceLayer::new_for_http());
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000") // todo replace with value from config
+    let listener = tokio::net::TcpListener::bind(format!("{}:{}", address.to_string(), port.to_string()))
     .await
     .unwrap();
 
@@ -63,3 +68,4 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 
 }
+
