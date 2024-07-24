@@ -1,18 +1,36 @@
-version: '3.8'
+volumes:
+  models:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./models/
+      o: bind
 
 services:
-  rustformers:
-    build: .
+  rag-api:
+    container_name: rag-api
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "8000:8000"
-    environment:
-      ROCKET_ADDRESS: "0.0.0.0"
+      - "3000:3000"
     depends_on:
       - postgres
-      - ollama
+      - llm-store
+    volumes:
+      - models:/app/models
+    environment:
+      RAG_DATABASE_URL: "postgres://myuser:mypassword@postgres:5432/mydatabase"
+      RAG_MODEL_PATH: /app/models/open_llama_3b-f16.bin
+      RAG_API_ADDRESS: "0.0.0.0"
+      RAG_API_PORT: "3000"
+      RAG_API_REQUEST_BODY_LIMIT: 1288490188
 
   postgres:
+    container_name: postgres
+    hostname: postgres # `server` in adminer
     image: postgres:latest
+    restart: always
     ports:
       - "5432:5432"
     environment:
@@ -20,10 +38,18 @@ services:
       POSTGRES_PASSWORD: mypassword
       POSTGRES_DB: mydatabase
 
-  ollama:
-    image: ollama:latest
-    ports:
-      - "9000:9000"
+  llm-store:
+    container_name: models
+    hostname: models
+    image: ksears/llm-store:llama-3b-16f
     volumes:
-      - C:/Users/catri/.ollama:/root/.ollama
+      - models:/app/models
+    user: "1000:1000"
 
+  adminer:
+    container_name: adminer
+    hostname: adminer
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080

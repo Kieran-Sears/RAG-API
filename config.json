@@ -1,5 +1,18 @@
 {
+    "api": {
+        "address": "0.0.0.0",
+        "port": "3000",
+        "request_body_limit": 1288490188
+    },
     "model": {
-        "path": "./models/open_llama_3b-f16.bin"
-    }
+        "path": "/home/kieran/Personal/Projects/Hugging Face Models/Open_Llama_3b-f16/open_llama_3b-f16.bin"
+    },
+    "database": {
+        "url": "postgres://myuser:mypassword@localhost/mydatabase"
+    },
+    "log_levels": {
+        "db": "ERROR",
+        "api::upload_handler": "INFO",
+        "tower_http": "INFO"
+      }
 }
