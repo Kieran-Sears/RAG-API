@@ -37,7 +37,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ksears/rustformers
+            ksears/rag-api
           tags: |
             type=ref,event=branch
             type=ref,event=pr
