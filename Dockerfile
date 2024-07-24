@@ -8,8 +8,7 @@ RUN cargo build --release
 
 FROM debian:bookworm
 
-# todo replace with libpq5 for release
-RUN apt-get update && apt-get install -y libpq-dev 
+RUN apt-get update && apt-get install -y libpq5 
 
 WORKDIR /app
 
