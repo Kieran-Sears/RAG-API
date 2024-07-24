@@ -1,18 +1,18 @@
 {
-    "Api": {
-        "Address": "0.0.0.0",
-        "Port": "3000",
-        "Request_Body_Limit": 1288490188,
-        "log_levels": {
-            "db": "ERROR",
-            "api::upload_handler": "INFO",
-            "tower_http": "INFO"
-          }
+    "api": {
+        "address": "0.0.0.0",
+        "port": "3000",
+        "request_body_limit": 1288490188
     },
-    "Model": {
-        "Path": "/home/kieran/Personal/Projects/Hugging Face Models/Open_Llama_3b-f16/open_llama_3b-f16.bin"
+    "model": {
+        "path": "/home/kieran/Personal/Projects/Hugging Face Models/Open_Llama_3b-f16/open_llama_3b-f16.bin"
     },
-    "Database": {
-        "Url": "postgres://myuser:mypassword@localhost/mydatabase"
-    }
+    "database": {
+        "url": "postgres://myuser:mypassword@localhost/mydatabase"
+    },
+    "log_levels": {
+        "db": "ERROR",
+        "api::upload_handler": "INFO",
+        "tower_http": "INFO"
+      }
 }

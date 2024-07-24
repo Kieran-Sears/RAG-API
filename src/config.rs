@@ -1,72 +1,55 @@
-use config::{*, ext::*};
-use std::collections::HashMap;
+use config::{Config, ConfigError, Environment, File};
+use serde::{Deserialize, Deserializer};
 use tracing_subscriber::EnvFilter;
-use serde::Deserialize;
+use std::{collections::HashMap, env};
 
 #[derive(Debug, Deserialize)]
-struct ApiConfig {
-    address: String,
-    port: String,
-    request_body_limit: u64,
-    log_levels: HashMap<String, String>,
+pub struct ApiConfig {
+    pub address: String,
+    pub port: String,
+    pub request_body_limit: usize,
 }
 
 #[derive(Debug, Deserialize)]
-struct ModelConfig {
-    path: String,
+pub struct ModelConfig {
+    pub path: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct DatabaseConfig {
-    url: String,
+pub struct DatabaseConfig {
+    pub url: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct Configuration {
-    api: ApiConfig,
-    model: ModelConfig,
-    database: DatabaseConfig,
+pub struct Settings {
+    pub api: ApiConfig,
+    pub model: ModelConfig,
+    pub database: DatabaseConfig,
+    #[serde(deserialize_with = "deserialize_log_levels")]
+    pub log_levels: EnvFilter,
 }
 
-pub fn load_config() -> Configuration {
-    let config_root = DefaultConfigurationBuilder::new()
-        .add_json_file("config.json".is().optional())
-        .add_env_vars_with_prefix("RagApi_")
-        .add_command_line()
-        .build()
-        .expect("Failed to load configuration");
-
-    let env_filter = config_root.get_value::<std::collections::HashMap<String, String>>("Api:Log_Levels").unwrap().unwrap();
-
-    let api_config = ApiConfig {
-        address: config_root.get("Api:Address").unwrap().to_string(),
-        port: config_root.get("Api:Port").unwrap().to_string(),
-        request_body_limit: config_root.get_value::<u64>("Api:Request_Body_Limit").unwrap().unwrap(),
-        log_levels: env_filter
-    };
-
-    let model_config = ModelConfig {
-
+impl Settings {
+    pub fn new() -> Result<Self, ConfigError> {
+        Config::builder()
+            .add_source(File::with_name("config.json"))
+            .add_source(Environment::with_prefix("RAG").try_parsing(true).separator("_"))
+            .build()
+            .expect("Failed to load configuration")
+            .try_deserialize()
     }
-
-    let db_config = DatabaseConfig {
-
-    }
-
-    Configuration {
-        database_url: settings.get("Database:Url").unwrap().to_string(),
-        model_path: settings.get("model:path").unwrap().to_string(),
-        
-        log_filter: env_filter
-    } 
 }
 
-fn build_env_filter_from_config(log_levels: &HashMap<String, String>) -> EnvFilter {
-    let filter = log_levels.into_iter()
-        .filter(|(k, _)| *k != "default")
-        .map(|(k, v)| format!("{}={}", k, v))
-        .fold(format!("{}={}", env!("CARGO_PKG_NAME").replace("-", "_"), "INFO".to_string()), 
-              |a, b| format!("{},{}", a, b));
+fn deserialize_log_levels<'de, D>(deserializer: D) -> Result<EnvFilter, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let map: HashMap<String, String> = Deserialize::deserialize(deserializer)?;
+    let default = &format!("{}=INFO", env!("CARGO_PKG_NAME").replace("-", "_"));
+    let log_levels: String = map.into_iter()
+        .map(|(key, value)| format!("{}={}", key, value))
+        .collect::<Vec<String>>()
+        .join(",");
 
-    EnvFilter::try_from_env(filter).unwrap_or_else(|_| EnvFilter::new("INFO"))
+    EnvFilter::try_new(&format!("{},{}", default, log_levels)).map_err(serde::de::Error::custom)
 }

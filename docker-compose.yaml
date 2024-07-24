@@ -20,11 +20,11 @@ services:
     volumes:
       - models:/app/models
     environment:
-      RagApi_Database__Url: "postgres://myuser:mypassword@postgres:5432/mydatabase"
-      RagApi_Model__Path: /app/models/open_llama_3b-f16.bin
-      RagApi_Api__Address: "0.0.0.0"
-      RagApi_Api__Port: "3000"
-      RagApi_API__Request_Body_Limit: 1288490188
+      RAG_DATABASE_URL: "postgres://myuser:mypassword@postgres:5432/mydatabase"
+      RAG_MODEL_PATH: /app/models/open_llama_3b-f16.bin
+      RAG_API_ADDRESS: "0.0.0.0"
+      RAG_API_PORT: "3000"
+      RAG_API_REQUEST_BODY_LIMIT: 1288490188
 
   postgres:
     container_name: postgres
