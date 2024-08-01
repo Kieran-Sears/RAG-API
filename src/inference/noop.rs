@@ -1,6 +1,7 @@
-use crate::inference::models::{EngineError, InferResp, VectorEncoding};
+use crate::inference::models::{EngineError, InferResp, VectorEncoding, VectorEncodings};
 use crate::InferenceEngine;
 use std::{pin::Pin, future::Future};
+
 
 #[derive(Debug, Clone)]
 pub struct NoOpInferenceEngine;
@@ -19,7 +20,7 @@ impl InferenceEngine<NoOpEncoding> for NoOpInferenceEngine {
         Box::pin(async move { Ok(InferResp { result: "NoOp inference".to_string() }) })
     }
 
-    fn encode(&self, _document: String) -> NoOpEncoding {
-        NoOpEncoding
+    fn encode(&self, _document: String) -> Pin<Box<dyn Future<Output = Result<VectorEncodings, EngineError>> + Send>> {
+        Box::pin(async move { Ok(VectorEncodings::NoOp(NoOpEncoding)) })
     }
 }

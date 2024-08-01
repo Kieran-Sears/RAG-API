@@ -81,11 +81,12 @@ impl InferenceEngine<LLMEncoding> for LlmInferenceEngine {
         })
     }
 
-    fn encode(&self, document: String) -> LLMEncoding {
-        let x = &self.model.vocabulary().tokenize(document.as_str(), false);
-        match x {
-            Ok(v) => LLMEncoding::new(&v),
-            Err(_) => todo!(),
-        }
+    fn encode(&self, document: String) -> Pin<Box<dyn Future<Output = Result<VectorEncodings, EngineError>> + Send>> {
+       let m = self.model.clone();
+        Box::pin(async move {
+         m.vocabulary().tokenize(document.as_str(), false)
+         .map(|val| VectorEncodings::Llm(LLMEncoding::new(&val)))
+         .map_err(|err|  EngineError::EncodingError { message: err.to_string() })
+        })
     }
 }

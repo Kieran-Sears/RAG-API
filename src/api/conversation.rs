@@ -10,7 +10,7 @@ use axum::{
 use futures::stream::{self, StreamExt};
 use serde_json::{from_slice, from_value, Value};
 use std::sync::Arc;
-use tracing::{trace, debug, error, info};
+use tracing::{debug, error, info, trace};
 use uuid::Uuid;
 
 pub async fn upload_form() -> Html<&'static str> {
@@ -98,9 +98,7 @@ async fn is_question_or_answer(
                         Ok(true)
                     }
                     "no" => Ok(false),
-                    _ => Err(EngineError::new(
-                        format!("Couldn't complete inference for Mapping: {}", mapping_id).to_string(),
-                    )),
+                    _ => Err(EngineError::InferenceError {message: format!("Couldn't complete inference for Mapping: {}", mapping_id).to_string()}),
                 }?;
                 Ok::<(Uuid, bool), EngineError>((mapping_id, is_q_or_a))
             }

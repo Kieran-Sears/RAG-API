@@ -10,7 +10,10 @@ pub trait InferenceEngine<VectorEncoding>: Send + Sync + Clone + Sized {
         &self,
         prompt: String,
     ) -> Pin<Box<(dyn Future<Output = Result<InferResp, EngineError>> + Send + 'static)>>;
-    fn encode(&self, document: String) -> VectorEncoding;
+    fn encode(
+        &self,
+        document: String,
+    ) -> Pin<Box<dyn Future<Output = Result<VectorEncodings, EngineError>> + Send + 'static>>;
 }
 
 impl InferenceEngine<VectorEncodings> for InferenceEngines {
@@ -25,13 +28,18 @@ impl InferenceEngine<VectorEncodings> for InferenceEngines {
         match self {
             InferenceEngines::Llm(engine) => engine.infer(prompt),
             InferenceEngines::NoOp(engine) => engine.infer(prompt),
+            InferenceEngines::Ollama(engine) => engine.infer(prompt),
         }
     }
 
-    fn encode(&self, document: String) -> VectorEncodings {
+    fn encode(
+        &self,
+        document: String,
+    ) -> Pin<Box<dyn Future<Output = Result<VectorEncodings, EngineError>> + Send + 'static>> {
         match self {
-            InferenceEngines::Llm(engine) => VectorEncodings::Llm(engine.encode(document)),
-            InferenceEngines::NoOp(engine) => VectorEncodings::NoOp(engine.encode(document)),
+            InferenceEngines::Llm(engine) => engine.encode(document),
+            InferenceEngines::NoOp(engine) => engine.encode(document),
+            InferenceEngines::Ollama(engine) => engine.encode(document),
         }
     }
 }
