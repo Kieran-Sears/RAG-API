@@ -4,6 +4,7 @@ volumes:
 services:
   rag-api:
     container_name: rag-api
+    hostname: rag-api
     build:
       context: .
       dockerfile: Dockerfile

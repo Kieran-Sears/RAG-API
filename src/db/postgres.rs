@@ -29,10 +29,10 @@ pub fn establish_connection(database_url: String) -> Pool<ConnectionManager<PgCo
     pool
 }
 
-pub fn insert_conversation(
-    pg_conn: &mut PgConnection,
-    conversation: &Conversation,
-) -> Result<Uuid, Error> {
+pub fn insert_conversation<'a>(
+    pg_conn: &'a mut PgConnection,
+    conversation: &'a Conversation,
+) -> Result<&'a Conversation, Error> {
     debug!("Inserting conversation: {:?}", conversation.id);
     
     let result = pg_conn.transaction(|conn| {
@@ -60,13 +60,13 @@ pub fn insert_conversation(
             }
         }
 
-        Ok(conversation_id)
+        Ok(conversation)
     });
 
     match result {
-        Ok(conversation_id) => {
-            info!("Transaction succeeded with conversation ID: {:?}", conversation_id);
-            Ok(conversation_id)
+        Ok(conversation) => {
+            info!("Transaction succeeded with conversation ID: {:?}", conversation.id);
+            Ok(conversation)
         }
         Err(e) => {
             error!("Transaction failed: {:?}", e);

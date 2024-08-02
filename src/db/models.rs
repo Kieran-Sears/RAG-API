@@ -4,6 +4,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ContentType {
+    Question,
+    Answer,
+    Other,
+}
+
 #[derive(Insertable, Queryable, Debug, Identifiable)]
 #[diesel(table_name = conversations)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -67,6 +74,7 @@ pub struct Mapping {
     pub message: Option<Message>,
     pub parent: Option<Uuid>,
     pub children: Option<Vec<Uuid>>,
+    pub content_type: Option<ContentType>,
 }
 
 #[derive(Insertable, Queryable, Debug, Identifiable)]

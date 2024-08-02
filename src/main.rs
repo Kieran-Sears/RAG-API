@@ -2,7 +2,7 @@ mod api;
 mod config;
 mod db;
 
-use api::conversation;
+use api::import;
 use axum::{
     extract::{DefaultBodyLimit, Extension},
     routing::get,
@@ -51,7 +51,7 @@ async fn main() {
     let app = Router::new()
         .route(
             "/",
-            get(conversation::upload_form).post(conversation::upload_handler),
+            get(import::upload_form).post(import::upload_handler),
         )
         .layer(Extension(shared_state))
         .layer(DefaultBodyLimit::disable())

@@ -43,6 +43,7 @@ table! {
         message -> Nullable<Uuid>,
         parent -> Nullable<Uuid>,
         children -> Nullable<Array<Uuid>>,
+        contentType -> Nullable<Text>
     }
 }
 
