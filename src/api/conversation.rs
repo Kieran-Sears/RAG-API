@@ -1,13 +1,13 @@
-use crate::db::models::*;
 use crate::db::postgres::insert_conversation;
-use crate::inference::engine::InferenceEngine;
-use crate::inference::models::*;
 use crate::AppState;
+use crate::{db::models::*, InferenceEngine};
+use anyhow::{Error, Result};
 use axum::{
     extract::{Extension, Multipart},
     response::Html,
 };
 use futures::stream::{self, StreamExt};
+use ollama_rs::generation::completion::request::GenerationRequest;
 use serde_json::{from_slice, from_value, Value};
 use std::sync::Arc;
 use tracing::{debug, error, info, trace};
@@ -65,18 +65,18 @@ pub async fn upload_handler(state: Extension<Arc<AppState>>, mut multipart: Mult
             .collect()
             .await;
 
-        let results: Vec<Result<Vec<(uuid::Uuid, bool)>, EngineError>> =
+        let results: Vec<Result<Vec<(uuid::Uuid, bool)>, Error>> =
             futures::future::join_all(questions_and_answers).await;
-        let x: Vec<Result<Vec<(uuid::Uuid, bool)>, EngineError>> =
+        let x: Vec<Result<Vec<(uuid::Uuid, bool)>, Error>> =
             results.into_iter().collect::<Vec<_>>();
         info!("\n\nQuestions And Answers:\n\n {:?}", x);
     }
 }
 
 async fn is_question_or_answer(
-    state: InferenceEngines,
+    state: InferenceEngine,
     conversation: Conversation,
-) -> Result<Vec<(Uuid, bool)>, EngineError> {
+) -> Result<Vec<(Uuid, bool)>, Error> {
     let context = "Answer with nothing other than `Yes` or `No`, is this a question or an answer to a question:\n";
 
     let futures: Vec<_> = conversation
@@ -87,25 +87,26 @@ async fn is_question_or_answer(
         .map(|(mapping_id, message)| {
             let message = get_content_text(&message.clone().content.parts)
             .join("");
-            let prompt = format!("{} {}", context, message);
+            let prompt = format!("{} {}", context, message).to_string();
             let s = state.clone();
             async move {
                 let p = prompt.clone();
-                let inference = s.infer(prompt).await?;
-                let is_q_or_a: bool = match inference.result.as_str() {
-                    "yes" => {
-                        debug!("Prompt given to LLM for (question/answer) evaluation:\n{}\n\n Inference answer to the prompt:\n{}\n\n", p.to_string(), inference.result.to_string());
+                let request = GenerationRequest::new(s.model, prompt);
+                let inference = s.engine.generate(request).await?;
+                let is_q_or_a: bool = match inference.response.as_str() {
+                    "yes." => {
+                        debug!("Prompt given to LLM for (question/answer) evaluation:\n{}\n\n Inference answer to the prompt:\n{}\n\n", p.to_string(), inference.response.to_string());
                         Ok(true)
                     }
-                    "no" => Ok(false),
-                    _ => Err(EngineError::InferenceError {message: format!("Couldn't complete inference for Mapping: {}", mapping_id).to_string()}),
+                    "no." => Ok(false),
+                    resp => Err( Error::msg(format!("Couldn't complete inference for Mapping: {}, LLM answered with something other than yes/no:\n{}", mapping_id, resp).to_string())),
                 }?;
-                Ok::<(Uuid, bool), EngineError>((mapping_id, is_q_or_a))
+                Ok::<(Uuid, bool), Error>((mapping_id, is_q_or_a))
             }
         })
         .collect();
 
-    let results: Result<Vec<(Uuid, bool)>, EngineError> = stream::iter(futures)
+    let results: Result<Vec<(Uuid, bool)>, Error> = stream::iter(futures)
         .then(|fut| fut)
         .collect::<Vec<_>>()
         .await

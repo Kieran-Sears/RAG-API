@@ -1,10 +1,5 @@
 volumes:
-  models:
-    driver: local
-    driver_opts:
-      type: none
-      device: ./models/
-      o: bind
+  ollama:
 
 services:
   rag-api:
@@ -16,12 +11,12 @@ services:
       - "3000:3000"
     depends_on:
       - postgres
-      - llm-store
-    volumes:
-      - models:/app/models
+      - ollama
     environment:
       RAG_DATABASE_URL: "postgres://myuser:mypassword@postgres:5432/mydatabase"
-      RAG_MODEL_PATH: /app/models/open_llama_3b-f16.bin
+      RAG_MODEL_ADDRESS: "http://ollama"
+      RAG_MODEL_PORT: 11434
+      RAG_MODEL_NAME: "llama3.1:latest"
       RAG_API_ADDRESS: "0.0.0.0"
       RAG_API_PORT: "3000"
       RAG_API_REQUEST_BODY_LIMIT: 1288490188
@@ -38,14 +33,6 @@ services:
       POSTGRES_PASSWORD: mypassword
       POSTGRES_DB: mydatabase
 
-  llm-store:
-    container_name: models
-    hostname: models
-    image: ksears/llm-store:llama-3b-16f
-    volumes:
-      - models:/app/models
-    user: "1000:1000"
-
   adminer:
     container_name: adminer
     hostname: adminer
@@ -53,3 +40,29 @@ services:
     restart: always
     ports:
       - 8080:8080
+
+  ollama:
+    container_name: ollama
+    hostname: ollama
+    image: ollama/ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            capabilities: ["gpu"]
+            count: all
+    volumes:
+      - ollama:/root/.ollama
+    restart: always
+
+  modelchecker:
+    container_name: modelchecker
+    image: registry.gitlab.com/gitlab-ci-utils/curl-jq:latest
+    entrypoint: ["sh", "-c", "./modelcheck.sh"]
+    volumes:
+      - ./resources/scripts/modelcheck.sh:/modelcheck.sh
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_API_ENDPOINT: "http://ollama:11434"

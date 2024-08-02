@@ -12,7 +12,9 @@ pub struct ApiConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct ModelConfig {
-    pub path: String,
+    pub address: String,
+    pub port: u16,
+    pub name: String
 }
 
 #[derive(Debug, Deserialize)]

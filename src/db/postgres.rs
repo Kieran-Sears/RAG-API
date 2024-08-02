@@ -10,15 +10,9 @@ use crate::db::schema::*;
 
 use tracing::{debug, info, error};
 
-use thiserror::Error;
+use anyhow::Error;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("resources/migrations/");
-
-#[derive(Debug, Error)]
-pub enum StorageError {
-    #[error("Diesel error: {0}")]
-    DieselError(#[from] diesel::result::Error),
-}
 
 pub fn establish_connection(database_url: String) -> Pool<ConnectionManager<PgConnection>> {
     let manager = ConnectionManager::<PgConnection>::new(database_url);
@@ -38,7 +32,7 @@ pub fn establish_connection(database_url: String) -> Pool<ConnectionManager<PgCo
 pub fn insert_conversation(
     pg_conn: &mut PgConnection,
     conversation: &Conversation,
-) -> Result<Uuid, StorageError> {
+) -> Result<Uuid, Error> {
     debug!("Inserting conversation: {:?}", conversation.id);
     
     let result = pg_conn.transaction(|conn| {
@@ -81,7 +75,7 @@ pub fn insert_conversation(
     }
 }
 
-fn insert_mapping(conn: &mut PgConnection, mapping: &Mapping) -> Result<Uuid, StorageError> {
+fn insert_mapping(conn: &mut PgConnection, mapping: &Mapping) -> Result<Uuid, Error> {
     let db_mapping: DbMapping = mapping.clone().into();
     match diesel::insert_into(mappings::table)
         .values(&db_mapping)
@@ -89,11 +83,11 @@ fn insert_mapping(conn: &mut PgConnection, mapping: &Mapping) -> Result<Uuid, St
         .get_result(conn)
     {
         Ok(mapping_id) => Ok(mapping_id),
-        Err(e) => Err(StorageError::DieselError(e)),
+        Err(e) => Err(Error::msg(e.to_string())),
     }
 }
 
-fn insert_message(conn: &mut PgConnection, msg: &Message) -> Result<Uuid, StorageError> {
+fn insert_message(conn: &mut PgConnection, msg: &Message) -> Result<Uuid, Error> {
     let db_message: DbMessage = msg.clone().into();
     match diesel::insert_into(messages::table)
         .values(&db_message)
@@ -101,6 +95,6 @@ fn insert_message(conn: &mut PgConnection, msg: &Message) -> Result<Uuid, Storag
         .get_result(conn)
     {
         Ok(message_id) => Ok(message_id),
-        Err(e) => Err(StorageError::DieselError(e)),
+        Err(e) => Err(Error::msg(e.to_string())),
     }
 }
